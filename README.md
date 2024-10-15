@@ -1,5 +1,5 @@
 # FEVER
-FEVER - FEM Electrothrmal solVER 
+FEVER - FEM Electrothermal solVER 
 
 FEVER is a finite element tool for linear and non linear electrothermal steady state problems.
 
