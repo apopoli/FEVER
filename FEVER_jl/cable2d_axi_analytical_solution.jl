@@ -27,7 +27,10 @@ const Wprime = qvol_cu * pi * r_cu^2     # W/m
 
 # ---- Boundary / soil ----
 const Tsoil = 293.15  # K
-const RTg   = 0.8     # K*m/W  (per unit length soil resistance)
+d = 1.3 # burial depth (m)
+uu = d/r_ext
+rho_thermal_soil = 1.3 # K*m/W (placeholder)
+const RTg = rho_thermal_soil/(2*pi)*log(uu+sqrt(uu^2+1)) # IEC 60287
 
 # If instead you have h_eff: RTg should satisfy RTg = 1/(2π r_ext h_eff)
 
@@ -114,3 +117,27 @@ Tint = analytic_interface_temperatures()
 # Example sampling:
 # rs = range(0.0, r_ext; length=50)
 # Ts = [T_analytic(r) for r in rs]
+
+
+using DelimitedFiles
+using Printf
+
+# -----------------------------
+# Leggi risultati FEM dal CSV (r,z,T) e confronta con analitica
+# -----------------------------
+femfile = "cable2d_axi_bottom_T.csv"
+
+# legge tutto (header + dati)
+raw = readdlm(femfile, ',', Any; header=true)
+data = raw[1]  # matrice Any
+# header = raw[2]  # se ti serve
+
+# estrai colonne come Float64
+r_fem = Float64.(data[:, 1])
+z_fem = Float64.(data[:, 2])
+T_fem = Float64.(data[:, 3])
+
+plot(r_fem,T_analytic.(r_fem), labels="Analytic",linewidth=5)
+xlabel!("r (m)")
+xlabel!("r (m)")
+scatter!(r_fem,T_fem, labels="FEM", color=:red,ms=2, ma=0.5)
