@@ -17,30 +17,25 @@ grid = FerriteGmsh.togrid(mshfile)
 # -----------------------------
 # Parametri fisici
 # -----------------------------
-# Materiali (placeholder: sostituisci con i tuoi)
+# Materias, see https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9863530
 const k_map = Dict(
-    "cu"     => 400.0,
-    "sc_in"  => 1.0,
-    "xlpe"   => 0.35,
-    "sc_out" => 1.0,
-    "al"     => 200.0,
-    "cover"  => 0.2
+    "cu"     => 3.8E2,
+    "sc_in"  => 0.29,
+    "xlpe"   => 0.29,
+    "sc_out" => 0.29,
+    "al"     => 2.37E2,
+    "cover"  => 0.29
 )
 
-# Joule heating nel rame da I = 100 A su r_c = 20 mm
-const I = 1000.0
+# Joule heating nel rame
+const I = 1533.097214951819
 const rc = 20e-3
-const rho_e_cu = 1.68e-8                 # [Ω m] (placeholder, 20°C)
+const rho_e_cu = 1/5.8E7                 # [Ω m] (placeholder, 20°C)
 const J = I / (pi * rc^2)                # [A/m^2]
-const qvol_cu = rho_e_cu * J^2            # [W/m^3]
+const qvol_cu = rho_e_cu * J^2           # [W/m^3]
 
 qvol_for_set(name::String) = (name == "cu") ? qvol_cu : 0.0
 
-# Robin equivalente "interramento": -k dT/dn = h_eff (T - Tsoil)
-const Tsoil = 293.15  # K (20°C)
-
-# TODO: metti qui la formula IEC/paper per RTg (K*m/W per unit length)
-const RTg = 0.8
 # h_eff = 1/(2π r_ext RTg).  r_ext lo prendiamo dalla mesh (max r sui nodi dell'outer)
 function estimate_r_ext(grid)
     # prende il r massimo tra i nodi
@@ -55,11 +50,18 @@ const h_eff = 1.0 / (2pi * r_ext * RTg)
 
 @info "Estimated r_ext = $r_ext m, h_eff = $h_eff W/m^2/K"
 
+# Robin equivalente "interramento": -k dT/dn = h_eff (T - Tsoil)
+const Tsoil = 293.15  # K (20°C)
+# thermal resistance between the buried cable and the soil
+d = 1.3 # burial depth (m)
+uu = d/r_ext
+rho_thermal_soil = 1.3 # K*m/W (placeholder)
+const RTg = rho_thermal_soil/(2*pi)*log(uu+sqrt(uu^2+1)) # IEC 60287
+
 # -----------------------------
 # Spazio FEM
 # -----------------------------
-ip  = Lagrange{RefTriangle, 1}()          # se la mesh è triangolare
-# Se hai quad, cambia a RefQuadrilateral.
+ip  = Lagrange{RefTriangle, 1}() # se la mesh è triangolare
 qr  = QuadratureRule{RefTriangle}(2)
 fqr = FacetQuadratureRule{RefTriangle}(2)
 
