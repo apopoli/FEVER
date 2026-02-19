@@ -5,10 +5,11 @@ using WriteVTK
 
 include("src/Materials.jl")
 include("src/CaseIO.jl")
+include("src/ThermalBC.jl")
 
 using .Materials
 using .CaseIO
-import .CaseIO: load_case, region_material_map
+using .ThermalBC
 
 # -----------------------------
 # Input mesh from Gmsh
@@ -17,7 +18,7 @@ case = CaseIO.load_case("case.toml")
 mshfile = case.meshfile
 grid = FerriteGmsh.togrid(mshfile)
 
-@info "Cellsets:  $(collect(keys(grid.cellsets)))"
+@info "Case regions:  $(collect(keys(grid.cellsets)))"
 @info "Facetsets: $(collect(keys(grid.facetsets)))"
 
 # -----------------------------
@@ -34,7 +35,6 @@ const qvol_cu = rho_e_cu * J^2           # [W/m^3]
 
 qvol_for_set(name::String) = (name == "cu") ? qvol_cu : 0.0
 
-# h_eff = 1/(2π r_ext RTg).  r_ext lo prendiamo dalla mesh (max r sui nodi dell'outer)
 function estimate_r_ext(grid)
     # prende il r massimo tra i nodi
     rmax = -Inf
@@ -46,18 +46,8 @@ end
 const r_ext = estimate_r_ext(grid)
 @info "Estimated r_ext = $r_ext m"
 
-# Robin equivalente "interramento": -k dT/dn = h_eff (T - Tsoil)
-const Tsoil = 293.15  # K (20°C)
-# thermal resistance between the buried cable and the soil
-d = 1.3 # burial depth (m)
-uu = d/r_ext
-rho_thermal_soil = 1.3 # K*m/W (placeholder)
-const RTg = rho_thermal_soil/(2*pi)*log(uu+sqrt(uu^2+1)) # IEC 60287
-
-const h_eff = 1.0 / (2pi * r_ext * RTg)
-
 # -----------------------------
-# Spazio FEM
+# FEM space
 # -----------------------------
 ip  = Lagrange{RefTriangle, 1}() # se la mesh è triangolare
 qr  = QuadratureRule{RefTriangle}(2)
@@ -71,7 +61,7 @@ cv = CellValues(qr, ip)
 fv = FacetValues(fqr, ip)
 
 # -----------------------------
-# Assembly assialsimmetrico
+# Assembly (axisymmetric)
 # -----------------------------
 function assemble_volume_for_set!(assembler, dh, cv; cellset, k::Float64, qvol::Float64)
     nbase = getnbasefunctions(cv)
@@ -107,7 +97,7 @@ function assemble_volume_for_set!(assembler, dh, cv; cellset, k::Float64, qvol::
     return nothing
 end
 
-function assemble_robin_outer!(assembler, dh, fv; facetset, h::Float64, T∞::Float64)
+function assemble_robin_outer!(assembler, dh, fv; facetset, hfun, T∞::Float64)
     nbase = getnbasefunctions(fv)
     Ke = zeros(nbase, nbase)
     fe = zeros(nbase)
@@ -122,7 +112,9 @@ function assemble_robin_outer!(assembler, dh, fv; facetset, h::Float64, T∞::Fl
         for qp in 1:getnquadpoints(fv)
             x = spatial_coordinate(fv, qp, facet_coords)
             r = x[1]
-            w = getdetJdV(fv, qp) * (2pi * r)
+            w = getdetJdV(fv, qp) * (2*pi * r)
+
+            h = hfun(x)
 
             for i in 1:nbase
                 Ni = shape_value(fv, qp, i)
@@ -145,7 +137,7 @@ end
 K = allocate_matrix(dh)
 f = zeros(ndofs(dh))
 
-assembler = start_assemble(K, f)   # <-- SOLO QUI
+assembler = start_assemble(K, f)
 
 Tref = 293.15  # until k becomes temperature-dependent in the element routine
 for (region, mat) in regmat
@@ -157,13 +149,11 @@ for (region, mat) in regmat
     )
 end
 
-outer = getfacetset(grid, "outer")
-@info "outer facets = $(length(outer))"
-assemble_robin_outer!(assembler, dh, fv; facetset=outer, h=h_eff, T∞=Tsoil)
+apply_thermal_bcs!(assemble_robin_outer!, assembler, case, grid, dh, fv)
 
 # -----------------------------
-# Constraints (nessun Dirichlet per ora)
-# axis/top/bottom sono adiabatici naturali -> non si impone nulla
+# Constraints
+# axis/top/bottom adiabatic -> no forcing
 # -----------------------------
 ch = ConstraintHandler(dh)
 close!(ch)
@@ -183,3 +173,4 @@ VTKGridFile(outfile, dh) do vtk
 end
 
 @info "Wrote $outfile.vtu"
+outer = getfacetset(grid, "outer")
