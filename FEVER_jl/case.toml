@@ -16,9 +16,10 @@ type = "steady"
 [physics.thermal.bc]
 # Standard Robin BC 
 # outer = { type = "convection", h = 8.0, Tinf = 293.15 }
-
 # BC interramento equivalente IEC 60287
 outer = { type = "buried_iec60287", Tinf = 293.15, burial_depth = 1.3, rho_thermal_soil = 1.3}
-
 axis  = { type = "symmetry" }
+
+[physics.thermal.sources]
+cu = { type = "joule_J", J = 1.22e6 }   # A/m^2
 

@@ -26,15 +26,6 @@ grid = FerriteGmsh.togrid(mshfile)
 # -----------------------------
 regmat = region_material_map(case)   # Dict(region_name => Material)
 
-# Joule heating nel rame
-const I = 1533.097214951819
-const rc = 20e-3
-const rho_e_cu = 1/5.8E7                 # [Ω m] (placeholder, 20°C)
-const J = I / (pi * rc^2)                # [A/m^2]
-const qvol_cu = rho_e_cu * J^2           # [W/m^3]
-
-qvol_for_set(name::String) = (name == "cu") ? qvol_cu : 0.0
-
 function estimate_r_ext(grid)
     # prende il r massimo tra i nodi
     rmax = -Inf
@@ -139,17 +130,47 @@ f = zeros(ndofs(dh))
 
 assembler = start_assemble(K, f)
 
-Tref = 293.15  # until k becomes temperature-dependent in the element routine
+function qvol_for_region(case, region, mat; Tref=293.15)
+    srcs = get(get(get(case.raw, "physics", Dict()), "thermal", Dict()), "sources", Dict())
+    haskey(srcs, region) || return 0.0
+
+    spec = srcs[region]::Dict{String,Any}
+    @info "Source spec for region=$region: $spec"
+
+    typ = String(spec["type"])
+
+    if typ == "constant"
+        return Float64(spec["qvol"])
+
+    elseif typ == "joule_J"
+        J = Float64(spec["J"])
+        sigma = mat.sigma(Tref, 0.0)
+        return (1.0 / sigma) * J^2
+
+    else
+        error("Unknown source type '$typ' for region '$region'")
+    end
+end
+
+Tref = 293.15
 for (region, mat) in regmat
     @assert haskey(grid.cellsets, region) "Mesh missing cellset '$region'"
+    qvol = qvol_for_region(case, region, mat; Tref=Tref)
+
     assemble_volume_for_set!(assembler, dh, cv;
         cellset = getcellset(grid, region),
         k      = mat.k(Tref),
-        qvol   = qvol_for_set(region)  # still uses region name, fine for now
+        qvol   = qvol
     )
 end
 
-apply_thermal_bcs!(assemble_robin_outer!, assembler, case, grid, dh, fv)
+for (region, mat) in regmat
+    @info "region=$region k=$(mat.k(293.15)) sigma=$(try mat.sigma(293.15,0.0) catch e e end)"
+end
+
+ThermalBC.apply_thermal_bcs!(assemble_robin_outer!, assembler, case, grid, dh, fv)
+@info "thermal bc keys in case: " keys(case.raw["physics"]["thermal"]["bc"])
+@info "outer facets = " length(getfacetset(grid, "outer"))
 
 # -----------------------------
 # Constraints
