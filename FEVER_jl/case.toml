@@ -1,0 +1,21 @@
+[mesh]
+file = "cable2d_axi.msh"
+
+[materials]
+# region (cellset name in gmsh) = material key or alias
+cu     = "copper"
+sc_in  = "semicon"
+xlpe   = "xlpe"
+sc_out = "semicon"
+al     = "aluminum"
+cover  = "cover"
+
+[physics.thermal]
+type = "steady"
+
+[physics.thermal.bc]
+# facetset names (from gmsh)
+outer = { type = "convection", h = 8.0, Tinf = 293.15 }
+axis  = { type = "symmetry" }
+
+# to be added: [physics.conduction], [physics.conduction.bc]

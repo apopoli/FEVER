@@ -3,29 +3,27 @@ using FerriteGmsh
 using SparseArrays
 using WriteVTK
 
-# -----------------------------
-# Input mesh Gmsh
-# -----------------------------
-const mshfile = "cable2d_axi.msh"
+include("src/Materials.jl")
+include("src/CaseIO.jl")
 
-# Import grid + Physical Groups -> cellsets/facetsets
+using .Materials
+using .CaseIO
+import .CaseIO: load_case, region_material_map
+
+# -----------------------------
+# Input mesh from Gmsh
+# -----------------------------
+case = CaseIO.load_case("case.toml")
+mshfile = case.meshfile
 grid = FerriteGmsh.togrid(mshfile)
 
 @info "Cellsets:  $(collect(keys(grid.cellsets)))"
 @info "Facetsets: $(collect(keys(grid.facetsets)))"
 
 # -----------------------------
-# Parametri fisici
-# -----------------------------
 # Materias, see https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9863530
-const k_map = Dict(
-    "cu"     => 3.8E2,
-    "sc_in"  => 0.29,
-    "xlpe"   => 0.29,
-    "sc_out" => 0.29,
-    "al"     => 2.37E2,
-    "cover"  => 0.29
-)
+# -----------------------------
+regmat = region_material_map(case)   # Dict(region_name => Material)
 
 # Joule heating nel rame
 const I = 1533.097214951819
@@ -46,9 +44,7 @@ function estimate_r_ext(grid)
     return rmax
 end
 const r_ext = estimate_r_ext(grid)
-const h_eff = 1.0 / (2pi * r_ext * RTg)
-
-@info "Estimated r_ext = $r_ext m, h_eff = $h_eff W/m^2/K"
+@info "Estimated r_ext = $r_ext m"
 
 # Robin equivalente "interramento": -k dT/dn = h_eff (T - Tsoil)
 const Tsoil = 293.15  # K (20°C)
@@ -57,6 +53,8 @@ d = 1.3 # burial depth (m)
 uu = d/r_ext
 rho_thermal_soil = 1.3 # K*m/W (placeholder)
 const RTg = rho_thermal_soil/(2*pi)*log(uu+sqrt(uu^2+1)) # IEC 60287
+
+const h_eff = 1.0 / (2pi * r_ext * RTg)
 
 # -----------------------------
 # Spazio FEM
@@ -149,12 +147,13 @@ f = zeros(ndofs(dh))
 
 assembler = start_assemble(K, f)   # <-- SOLO QUI
 
-for name in ["cu", "sc_in", "xlpe", "sc_out", "al", "cover"]
-    @assert haskey(grid.cellsets, name)
+Tref = 293.15  # until k becomes temperature-dependent in the element routine
+for (region, mat) in regmat
+    @assert haskey(grid.cellsets, region) "Mesh missing cellset '$region'"
     assemble_volume_for_set!(assembler, dh, cv;
-        cellset = getcellset(grid, name),
-        k      = k_map[name],
-        qvol   = qvol_for_set(name)
+        cellset = getcellset(grid, region),
+        k      = mat.k(Tref),
+        qvol   = qvol_for_set(region)  # still uses region name, fine for now
     )
 end
 
