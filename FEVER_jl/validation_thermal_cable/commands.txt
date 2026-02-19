@@ -1,0 +1,2 @@
+# generate mesh
+gmsh -2 cable2d_axi.geo -format msh2 -o cable2d_axi.msh
