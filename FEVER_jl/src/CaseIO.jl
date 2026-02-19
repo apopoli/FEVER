@@ -12,8 +12,13 @@ end
 
 function load_case(path::AbstractString)
     raw = TOML.parsefile(path)
+    casedir = dirname(abspath(path))
 
-    meshfile = raw["mesh"]["file"]
+    # Mesh path: relativo al case.toml
+    meshfile_rel = raw["mesh"]["file"]
+    meshfile = isabspath(meshfile_rel) ? meshfile_rel : joinpath(casedir, meshfile_rel)
+
+    # Materials mapping (region => material key)
     region_to_material_key = Dict{String,String}(raw["materials"])
 
     return Case(meshfile, region_to_material_key, raw)

@@ -39,7 +39,7 @@ function material_db()
             name="XLPE",
             aliases=["xlpe", "XLPE"],
             k = T -> 0.29,
-            sigma = (T, E) -> 1e-14,  # placeholder; you’ll replace with nonlinear law
+            sigma = (T, E) -> 1e-14,  # placeholder
             eps_r = T -> 2.3,         # placeholder
         ),
         "semicon" => Material(

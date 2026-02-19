@@ -14,7 +14,10 @@ using .ThermalBC
 # -----------------------------
 # Input mesh from Gmsh
 # -----------------------------
-case = CaseIO.load_case("case.toml")
+
+casepath = joinpath(@__DIR__, "case.toml")
+case = CaseIO.load_case(casepath)
+
 mshfile = case.meshfile
 grid = FerriteGmsh.togrid(mshfile)
 
