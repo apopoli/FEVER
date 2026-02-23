@@ -39,6 +39,6 @@ alpha = 0.084                # 1/K
 beta_mm_per_kV = 0.0645      # mm/kV
 
 [physics.electric.bc]
-interface_cu = { type = "dirichlet", phi = 1.0E3 }
+interface_cu = { type = "dirichlet", phi = 1.0E2 }
 outer        = { type = "dirichlet", phi = 0.0 }
 axis         = { type = "symmetry"}

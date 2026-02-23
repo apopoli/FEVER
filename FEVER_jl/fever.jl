@@ -237,7 +237,7 @@ function main()
     regmat = CaseIO.region_material_map(case)   # Dict(region_name => Material)
 
     r_ext = estimate_r_ext(grid)
-    
+
     @info "Estimated r_ext = $r_ext m"
 
     # -----------------------------
@@ -305,7 +305,6 @@ function main()
 
     @info "Wrote $outfile.vtu"
     # outer = getfacetset(grid, "outer") # utile per fare plot lungo una lines
-
 
     # ---
 
