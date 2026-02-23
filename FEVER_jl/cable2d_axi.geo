@@ -86,7 +86,7 @@ Physical Curve("bottom") = {bline[]};
 Physical Curve("top")    = {tline[]};
 
 // (opzionale) se vuoi anche i bordi interni per debug:
-// Physical Curve("interfaces") = {vline[1], vline[2], vline[3], vline[4], vline[5]};
+Physical Curve("interface_cu") = {vline[1]};
 
 // ----------------------------
 // Mesh options
