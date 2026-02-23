@@ -27,7 +27,7 @@ grid = FerriteGmsh.togrid(mshfile)
 # -----------------------------
 # Materias, see https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9863530
 # -----------------------------
-regmat = region_material_map(case)   # Dict(region_name => Material)
+regmat = CaseIO.region_material_map(case)   # Dict(region_name => Material)
 
 function estimate_r_ext(grid)
     # prende il r massimo tra i nodi
