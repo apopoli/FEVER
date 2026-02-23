@@ -43,7 +43,8 @@ end
 
 "Return exclude_domain list under [physics.<phys>], defaulting to []."
 function excluded_domains(case::Case, phys::AbstractString)
-    cfg = physics_cfg(case, phys)
+    phys_all = get(case.raw, "physics", Dict{String,Any}())
+    cfg = get(phys_all, String(phys), Dict{String,Any}())
     ex = get(cfg, "exclude_domain", Any[])
     return [String(x) for x in ex]
 end

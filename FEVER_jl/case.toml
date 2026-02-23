@@ -26,10 +26,19 @@ axis  = { type = "symmetry" }
 cu = { type = "joule_J", J = 1.22e6 }   # A/m^2
 
 [physics.electric]
-type = "steady"
-exclude_domain = ["cu"]  # electric everywhere except copper
+type = "conduction"          # "electrostatic" or "conduction"
+exclude_domain = ["cu"]
+
+[physics.electric.conduction]
+nonlinear = true             # if false -> linear conduction with σ(T,0)
+sigma_model = "xlpe_exp"     # apply the exp law on XLPE
+
+sigma0 = 1e-16               # S/m at T0
+T0 = 273.15                  # K
+alpha = 0.084                # 1/K
+beta_mm_per_kV = 0.0645      # mm/kV
 
 [physics.electric.bc]
-interface_cu = { type = "dirichlet", facetset = "interface_cu", phi = 1.0 }
-outer        = { type = "dirichlet", facetset = "outer",        phi = 0.0 }
-axis         = { type = "symmetry",  facetset = "axis" }
+interface_cu = { type = "dirichlet", phi = 1.0E3 }
+outer        = { type = "dirichlet", phi = 0.0 }
+axis         = { type = "symmetry"}

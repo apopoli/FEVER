@@ -39,7 +39,15 @@ function material_db()
             name="XLPE",
             aliases=["xlpe", "XLPE"],
             k = T -> 0.29,
-            sigma = (T, E) -> 1e-14,  # placeholder
+            # E is assumed in V/m
+            sigma = (T, E) -> begin
+                σ0 = 1e-16
+                T0 = 273.15
+                α  = 0.084
+                βmmkV = 0.0645
+                E_kV_per_mm = E * 1e-6          # V/m -> kV/mm
+                σ0 * exp(α*(T - T0) + βmmkV*E_kV_per_mm)
+            end,
             eps_r = T -> 2.3,         # placeholder
         ),
         "semicon" => Material(
