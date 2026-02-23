@@ -6,10 +6,12 @@ using WriteVTK
 include("src/Materials.jl")
 include("src/CaseIO.jl")
 include("src/ThermalBC.jl")
+include("src/ElectricBC.jl")
 
 using .Materials
 using .CaseIO
 using .ThermalBC
+using .ElectricBC
 
 # -----------------------------
 # Input mesh from Gmsh
@@ -197,4 +199,113 @@ VTKGridFile(outfile, dh) do vtk
 end
 
 @info "Wrote $outfile.vtu"
-outer = getfacetset(grid, "outer")
+# outer = getfacetset(grid, "outer") # utile per fare plot lungo una lines
+
+
+
+
+
+
+
+
+
+
+
+
+
+# -----------------------------
+# Electrostatics (axisymmetric Laplace) on Ω \ exclude_domain
+# -----------------------------
+# We solve: ∇·(ε ∇phi) = 0   (in axisym -> same 2πr weight as thermal)
+# with Dirichlet on interface_cu and outer, symmetry on axis (natural).
+
+# --- helper: union of included cellsets ---
+function union_cellsets(grid, region_names::Vector{String})
+    @assert !isempty(region_names) "No included regions for electric solve."
+    sets = [getcellset(grid, r) for r in region_names]
+    return reduce(union, sets)
+end
+
+# Regions included in electric
+excluded = CaseIO.excluded_domains(case, "electric")
+included_regions = [String(r) for r in keys(regmat) if !(String(r) in excluded)]
+
+@info "Electric excluded regions: $excluded"
+@info "Electric included regions: $included_regions"
+
+cells_elec = union_cellsets(grid, included_regions)
+
+# --- Dofs only on included regions (critical to avoid singular matrix) ---
+dhφ = DofHandler(grid)
+sdhφ = SubDofHandler(dhφ, cells_elec)
+add!(sdhφ, :phi, ip)
+close!(dhφ)
+
+cvφ = CellValues(qr, ip)
+fvφ = FacetValues(fqr, ip)  # not strictly needed for Dirichlet, but ok to keep
+
+# --- Assembly function (like thermal, but no source term) ---
+function assemble_laplace_for_set!(assembler, dh, cv; cellset, eps::Float64)
+    nbase = getnbasefunctions(cv)
+    Ke = zeros(nbase, nbase)
+    fe = zeros(nbase)
+
+    for cell in CellIterator(dh, cellset)
+        reinit!(cv, cell)
+        fill!(Ke, 0.0)
+        fill!(fe, 0.0)
+
+        cell_coords = getcoordinates(cell)
+        for qp in 1:getnquadpoints(cv)
+            x = spatial_coordinate(cv, qp, cell_coords)
+            r = x[1]
+            w = getdetJdV(cv, qp) * (2pi * r)
+
+            for i in 1:nbase
+                ∇Ni = shape_gradient(cv, qp, i)
+                for j in 1:nbase
+                    ∇Nj = shape_gradient(cv, qp, j)
+                    Ke[i, j] += eps * (∇Ni ⋅ ∇Nj) * w
+                end
+            end
+        end
+
+        assemble!(assembler, celldofs(cell), Ke, fe)
+    end
+    return nothing
+end
+
+Kφ = allocate_matrix(dhφ)
+fφ = zeros(ndofs(dhφ))
+assemblerφ = start_assemble(Kφ, fφ)
+
+# simple permittivity: ε = ε0 * eps_r(Tref) per region (refine later)
+const ε0 = 8.8541878128e-12
+
+for region in included_regions
+    mat = regmat[region]
+    eps = ε0 * mat.eps_r(Tref)  # or use temperature-dependent choice later
+    assemble_laplace_for_set!(assemblerφ, dhφ, cvφ;
+        cellset = getcellset(grid, region),
+        eps = eps
+    )
+end
+
+# Dirichlet constraints from TOML
+chφ = ElectricBC.build_electric_constraints!(case, grid, dhφ)
+
+apply!(Kφ, fφ, chφ)
+phi = Kφ \ fφ
+apply!(phi, chφ)
+
+@info "Solved electrostatics. phi_min=$(minimum(phi)) V, phi_max=$(maximum(phi)) V"
+
+# Export
+outfile_phi = outfile * "_phi"
+VTKGridFile(outfile_phi, dhφ) do vtk
+    write_solution(vtk, dhφ, phi)
+end
+@info "Wrote $outfile_phi.vtu"
+
+
+

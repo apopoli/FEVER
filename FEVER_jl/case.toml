@@ -12,6 +12,7 @@ cover  = "cover"
 
 [physics.thermal]
 type = "steady"
+exclude_domain = []  # thermal everywhere
 
 [physics.thermal.bc]
 # Standard Robin BC 
@@ -24,3 +25,11 @@ axis  = { type = "symmetry" }
 [physics.thermal.sources]
 cu = { type = "joule_J", J = 1.22e6 }   # A/m^2
 
+[physics.electric]
+type = "steady"
+exclude_domain = ["cu"]  # electric everywhere except copper
+
+[physics.electric.bc]
+interface_cu = { type = "dirichlet", facetset = "interface_cu", phi = 1.0 }
+outer        = { type = "dirichlet", facetset = "outer",        phi = 0.0 }
+axis         = { type = "symmetry",  facetset = "axis" }

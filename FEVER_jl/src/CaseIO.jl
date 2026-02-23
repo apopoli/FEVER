@@ -2,7 +2,7 @@ module CaseIO
 using TOML
 import ..Materials: material_db, canonical_material_key
 
-export load_case, region_material_map
+export load_case, region_material_map, physics_cfg, excluded_domains, physics_bc
 
 struct Case
     meshfile::String
@@ -33,6 +33,25 @@ function region_material_map(case::Case)
         out[region] = db[ck]
     end
     return out
+end
+
+"Return the dictionary under [physics.<phys>], or an empty Dict if missing."
+function physics_cfg(case::Case, phys::AbstractString)
+    phys_all = get(case.raw, "physics", Dict{String,Any}())
+    return get(phys_all, String(phys), Dict{String,Any}())
+end
+
+"Return exclude_domain list under [physics.<phys>], defaulting to []."
+function excluded_domains(case::Case, phys::AbstractString)
+    cfg = physics_cfg(case, phys)
+    ex = get(cfg, "exclude_domain", Any[])
+    return [String(x) for x in ex]
+end
+
+"Return boundary condition dict under [physics.<phys>.bc], defaulting to empty."
+function physics_bc(case::Case, phys::AbstractString)
+    cfg = physics_cfg(case, phys)
+    return get(cfg, "bc", Dict{String,Any}())
 end
 
 end # module
