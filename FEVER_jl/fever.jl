@@ -3,8 +3,6 @@ using FerriteGmsh
 using SparseArrays
 using WriteVTK
 using LinearAlgebra
-using NonlinearSolve
-using ADTypes
 
 include("src/Materials.jl")
 include("src/CaseIO.jl")

@@ -27,7 +27,7 @@ cu = { type = "joule_J", J = 1.22e6 }   # A/m^2
 
 [physics.electric]
 type = "conduction"          # "electrostatic" or "conduction"
-exclude_domain = ["cu"]
+exclude_domain = ["cu","sc_out","sc_in","al","cover"]
 
 [physics.electric.conduction]
 nonlinear = true             # if false -> linear conduction with σ(T,0)
@@ -39,6 +39,6 @@ alpha = 0.084                # 1/K
 beta_mm_per_kV = 0.0645      # mm/kV
 
 [physics.electric.bc]
-interface_cu = { type = "dirichlet", phi = 1.0E2 }
-outer        = { type = "dirichlet", phi = 0.0 }
-axis         = { type = "symmetry"}
+xlpe_HV = { type = "dirichlet", phi = 340E3 }
+xlpe_gnd = { type = "dirichlet", phi = 0.0 }
+axis = { type = "symmetry"}

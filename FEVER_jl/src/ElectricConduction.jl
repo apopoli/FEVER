@@ -2,8 +2,10 @@ module ElectricConduction
 
 using Ferrite
 using LinearAlgebra
+using LinearSolve
 using NonlinearSolve
 using ADTypes
+using SparseConnectivityTracer
 using SparseMatrixColorings
 
 import ..ElectricBC: build_electric_constraints!
@@ -36,12 +38,16 @@ end
 
 # --- axisymmetric residual assembly for conduction: r_i = ∫ ∇N_i · (σ ∇φ) 2πr dΩ ---
 function assemble_conduction_residual!(r, grid, dhφ, dhT, cvφ, uφ_full, Tvec, included_regions, regmat, cond_cfg)
-    fill!(r, 0.0)
+    # ensure r is zeroed (respect element type)
+    fill!(r, zero(eltype(r)))
 
     n = getnbasefunctions(cvφ)
     celldofsφ = zeros(Int, n)
     celldofsT = zeros(Int, n)
-    re = zeros(n)
+
+    # use element type matching the global r vector (so tracer types are allowed)
+    T = eltype(r)
+    re = Vector{T}(undef, n)    # local element residuals (generic element type)
 
     for region in included_regions
         mat = regmat[region]
@@ -56,7 +62,7 @@ function assemble_conduction_residual!(r, grid, dhφ, dhT, cvφ, uφ_full, Tvec,
             Te = Tvec[celldofsT]
 
             Ferrite.reinit!(cvφ, cell)
-            fill!(re, 0.0)
+            fill!(re, zero(T))
 
             cell_coords = getcoordinates(cell)
             for qp in 1:getnquadpoints(cvφ)
@@ -65,7 +71,7 @@ function assemble_conduction_residual!(r, grid, dhφ, dhT, cvφ, uφ_full, Tvec,
                 w = getdetJdV(cvφ, qp) * (2pi * r_axi)
 
                 ∇φ = function_gradient(cvφ, qp, φe)
-                E  = norm(∇φ)
+                E = sqrt(sum(∇φ .* ∇φ))
                 Tqp = function_value(cvφ, qp, Te)
 
                 σ = sigma_for(mat, Tqp, E, cond_cfg)
@@ -95,33 +101,56 @@ struct ConductionData
     cond_cfg::Dict{String,Any}
     chφ
     free::Vector{Int}
-    ufull::Vector{Float64}
-    rfull::Vector{Float64}
+    ufull::Vector      # allow different numeric/tracer types
+    rfull::Vector
 end
 
-function residual_free!(rf, uf, data::ConductionData)
-    # build full u with Dirichlet values
-    fill!(data.ufull, 0.0)
-    apply!(data.ufull, data.chφ)  # set prescribed values in-place
+# Generic residual that works both for Float64 runs and tracer runs
+function residual_free!(rf::AbstractVector, uf::AbstractVector, data::ConductionData)
+    # number of global dofs
+    nfull = ndofs(data.dhφ)
 
-    @inbounds for (k, dof) in pairs(data.free)
-        data.ufull[dof] = uf[k]
+    # element type we must use for local full vectors (can be Float64 or a tracer type)
+    T = eltype(uf)
+
+    # local full solution / residual with element type matching uf
+    ufull_local = fill(zero(T), nfull)
+    rfull_local = fill(zero(T), nfull)
+
+    # --- Build Dirichlet (prescribed) vector in Float64, then convert to T ---
+    # We do this using the existing apply! which expects Float64 arrays in your current code.
+    # This avoids calling apply! on tracer arrays directly.
+    tmp_prescribed = zeros(Float64, nfull)
+    apply!(tmp_prescribed, data.chφ)         # set prescribed values (Float64)
+    @inbounds for i in 1:nfull
+        # convert Float64 -> tracer type (or Float64->Float64 no-op)
+        ufull_local[i] = convert(T, tmp_prescribed[i])
     end
 
+    # --- Put free DOF values from uf into the local full vector ---
+    @inbounds for (k, dof) in pairs(data.free)
+        ufull_local[dof] = uf[k]
+    end
+
+    # --- assemble residual into rfull_local using your existing assembler ---
+    # Note: assemble_conduction_residual! must accept the element type T for ufull_local/rfull_local,
+    # i.e., it mustn't assume Float64 constants in places where tracer values flow through.
     assemble_conduction_residual!(
-        data.rfull,
+        rfull_local,
         data.grid, data.dhφ, data.dhT, data.cvφ,
-        data.ufull, data.Tvec,
+        ufull_local, data.Tvec,
         data.included_regions, data.regmat,
         data.cond_cfg
     )
 
+    # --- Extract entries corresponding to free DOFs into rf ---
     @inbounds for (k, dof) in pairs(data.free)
-        rf[k] = data.rfull[dof]
+        rf[k] = rfull_local[dof]
     end
 
     return nothing
 end
+
 
 function solve_conduction_nonlinear!(case, grid, regmat, ip, qr, dhT, Tvec, outfile_prefix; Tref=293.15)
     elec = get(get(case.raw, "physics", Dict{String,Any}()), "electric", Dict{String,Any}())
@@ -198,25 +227,56 @@ function solve_conduction_nonlinear!(case, grid, regmat, ip, qr, dhT, Tvec, outf
     u0_free = phi0[free]
 
     # caches still Float64: OK because we will NOT use Duals (finite diff)
-    data = ConductionData(grid, dhφ, dhT, cvφ, Tvec, included_regions, regmat, cond_cfg, chφ, free,
-                        zeros(ndofs(dhφ)), zeros(ndofs(dhφ)))
+    nfull = ndofs(dhφ)
+    data = ConductionData(
+        grid, dhφ, dhT, cvφ, Tvec, included_regions, regmat, cond_cfg, chφ, free,
+        Vector{Any}(undef, nfull), Vector{Any}(undef, nfull)
+    )
+    # initialize to 0.0 so later fill! works (and types start as Float64)
+    fill!(data.ufull, 0.0)
+    fill!(data.rfull, 0.0)
 
-    # --- Declare sparse Jacobian structure (free dofs only) ---
-    Jfull = allocate_matrix(dhφ)         # Ferrite FE sparsity pattern
-    Jproto = Jfull[free, free]           # restrict to free dofs
-    fill!(Jproto.nzval, 0.0)             # values irrelevant
+    # --------------------------------------------------------------------
+    # Build sparse Jacobian *structure* via connectivity tracer + coloring
+    # --------------------------------------------------------------------
+    # closure for the residual depending only on the free dofs (data captured)
+    f_jac = (rf, uf) -> residual_free!(rf, uf, data)
 
-    f! = NonlinearFunction(
+    # a zero-like vector of the same shape as u0_free used by the sparsity routine
+    du0 = similar(u0_free)
+
+    # compute jacobian sparsity pattern using connectivity tracer
+    jac_sparsity = ADTypes.jacobian_sparsity(
+    f_jac, du0, u0_free,
+    SparseConnectivityTracer.TracerLocalSparsityDetector()
+    )
+
+    # optionally run coloring to reduce number of function evaluations during finite-diff
+    # (ADTypes.jacobian_sparsity already returns a prototype with coloring info for many AD
+    # backends; keep this here if you want to explicitly request a coloring object:)
+    # coloring = SparseMatrixColorings.color(jac_sparsity)
+    # NOTE: some workflows accept jac_prototype=coloring instead of plain sparse pattern.
+
+    # build NonlinearFunction using the sparse jacobian prototype (gives solver the sparsity)
+    f_nls = NonlinearFunction(
         (rf, uf, p) -> residual_free!(rf, uf, p);
-        jac_prototype = Jproto
+        jac_prototype = jac_sparsity
     )
 
-    prob = NonlinearProblem(f!, u0_free, data)
+    prob = NonlinearProblem(f_nls, u0_free, data)
 
-    # --- Force numerical differentiation (no Dual numbers) ---
-    sol = solve(prob,
-    NewtonRaphson(; autodiff = AutoFiniteDiff())
-    )
+    # Choose Newton solver configuration:
+    # - keep autodiff = AutoFiniteDiff() so NonlinearSolve uses finite-diff but respects sparsity
+    # - optionally provide a sparse linsolver (requires LinearSolve / KLU / UMFPACK installed)
+    #
+    # Example with a sparse direct KLU factorization (if you have LinearSolve + KLU):
+    # nl_solver = NewtonRaphson(linsolve = LinearSolve.KLUFactorization())
+    #
+    # If you don't have KLU, use the default NewtonRaphson and NonlinearSolve will use
+    # the provided jac_prototype to speed up numerical differentiation.
+    nl_solver = NewtonRaphson(; autodiff = AutoFiniteDiff())
+
+    sol = solve(prob, nl_solver)
 
     # reconstruct full solution
     phi = copy(phi0)

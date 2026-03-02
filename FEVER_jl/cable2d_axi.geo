@@ -92,3 +92,13 @@ Physical Curve("interface_cu") = {vline[1]};
 // Mesh options
 // ----------------------------
 Mesh.Algorithm = 6;
+//+
+Show "*";
+//+
+Show "*";
+//+
+Show "*";
+//+
+Physical Curve("xlpe_HV", 32) = {3};
+//+
+Physical Curve("xlpe_gnd", 33) = {4};
