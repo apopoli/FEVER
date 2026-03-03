@@ -54,7 +54,7 @@ function material_db()
             name="Semiconductive layer",
             aliases=["sc_in","sc_out","semicon","sc"],
             k = T -> 0.29,
-            sigma = (T, E) -> 6.0E3,    # placeholder
+            sigma = (T, E) -> 6E3,  # placeholder
             eps_r = T -> 10.0,        # placeholder
         ),
         "cover" => Material(
