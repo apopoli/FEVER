@@ -50,6 +50,51 @@ function material_db()
             end,
             eps_r = T -> 2.3,         # placeholder
         ),
+        "LSR" => Material(
+            name="LSR",
+            aliases=["lsr", "LSR"],
+            k = T -> 0.29,
+            # E is assumed in V/m
+            sigma = (T, E) -> begin
+                σ0 = 7.6872e-16
+                T0 = 273.15
+                α  = 0.0411
+                βmmkV = 0.0443
+                E_kV_per_mm = E * 1e-6          # V/m -> kV/mm
+                σ0 * exp(α*(T - T0) + βmmkV*E_kV_per_mm)
+            end,
+            eps_r = T -> 2.3,         # placeholder
+        ),
+        "LDPE" => Material(
+            name="LDPE",
+            aliases=["ldpe", "LDPE"],
+            k = T -> 0.29,
+            # E is assumed in V/m
+            sigma = (T, E) -> begin
+                σ0 = 3.4797e-17
+                T0 = 273.15
+                α  = 0.0706
+                βmmkV = 0.0966
+                E_kV_per_mm = E * 1e-6          # V/m -> kV/mm
+                σ0 * exp(α*(T - T0) + βmmkV*E_kV_per_mm)
+            end,
+            eps_r = T -> 2.3,         # placeholder
+        ),
+        "EVA" => Material(
+            name="EVA",
+            aliases=["eva", "EVA"],
+            k = T -> 0.29,
+            # E is assumed in V/m
+            sigma = (T, E) -> begin
+                σ0 = 2.5714e-17
+                T0 = 273.15
+                α  = 0.0831
+                βmmkV = 0.1291
+                E_kV_per_mm = E * 1e-6          # V/m -> kV/mm
+                σ0 * exp(α*(T - T0) + βmmkV*E_kV_per_mm)
+            end,
+            eps_r = T -> 2.3,         # placeholder
+        ),
         "semicon" => Material(
             name="Semiconductive layer",
             aliases=["sc_in","sc_out","semicon","sc"],
