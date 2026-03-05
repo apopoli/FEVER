@@ -3,6 +3,7 @@ using FerriteGmsh
 using SparseArrays
 using WriteVTK
 using LinearAlgebra
+using Dates
 
 include("src/Materials.jl")
 include("src/CaseIO.jl")
@@ -215,12 +216,28 @@ function solve_conduction!(case, grid, regmat, ip, qr, dhT, T, outfile; Tref=293
     end
 end
 
+function print_banner(; version="v0.1.0")
+    now_time = Dates.format(now(), "yyyy-mm-dd HH:MM:SS")
+
+    println("\033[1;31m====================================\033[0m")
+    println("\033[1;31m         🔥  FEVER.jl  🔥          \033[0m")
+    println("A. Popoli, A. Cristofolini - University of Bologna")    
+    println("\033[1;31m====================================\033[0m")
+    println(" Version : $version")
+    println(" Julia   : $(VERSION)")
+    println(" Threads : $(Threads.nthreads())")
+    println(" Started : $now_time")
+    println("\033[1;31m====================================\033[0m\n")
+end
+
 function main()
     # -----------------------------
     # Input mesh from Gmsh
     # -----------------------------
 
-    casepath = joinpath(@__DIR__, "case.toml")
+    print_banner()
+
+    casepath = (length(ARGS) >= 1) ? ARGS[1] : joinpath(@__DIR__, "case.toml")
     case = CaseIO.load_case(casepath)
 
     mshfile = case.meshfile

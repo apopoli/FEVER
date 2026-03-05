@@ -1,14 +1,15 @@
 [mesh]
-file = "cable2d_axi.msh"
+file = "joint_LIMES/joint_LIMES.msh"
 
 [materials]
 # region (cellset name in gmsh) = material key or alias
-cu     = "copper"
-sc_in  = "semicon"
-xlpe   = "xlpe"
-sc_out = "semicon"
-al     = "aluminum"
-cover  = "cover"
+Cond_in = "copper"
+Cond_out = "aluminum"
+Insul_in_L = "xlpe"
+Insul_in_R = "xlpe"
+Semicon_in = "semicon"
+Semicon_out = "semicon"
+Insul_out = "xlpe"
 
 [physics.thermal]
 type = "steady"
@@ -16,24 +17,23 @@ exclude_domain = []  # thermal everywhere
 
 [physics.thermal.bc]
 # Standard Robin BC 
-# outer = { type = "convection", h = 8.0, Tinf = 293.15 }
-
+interf_joint_out = { type = "convection", h = 8.0, Tinf = 293.15 }
 # BC interramento equivalente IEC 60287
-outer = { type = "buried_iec60287", Tinf = 293.15, burial_depth = 1.3, rho_thermal_soil = 1.3}
+# outer = { type = "buried_iec60287", Tinf = 293.15, burial_depth = 1.3, rho_thermal_soil = 1.3}
 axis  = { type = "symmetry" }
 
 [physics.thermal.sources]
-cu = { type = "joule_J", J = 1.22e6 }   # A/m^2 J = 1.22e6
+Cond_in = { type = "joule_J", J = 1.22e6 }   # A/m^2 J = 1.22e6
 
 [physics.electric]
 type = "conduction" # "electrostatic" or "conduction"
-exclude_domain = ["cu","sc_out","sc_in","al","cover"]
+exclude_domain = ["Cond_in","Cond_out","Semicon_in","Semicon_out"]
 
 [physics.electric.conduction]
 nonlinear = true             # if false -> linear conduction with σ(T,0)
 sigma_model = "xlpe_exp"     # apply the exp law on XLPE
 
 [physics.electric.bc]
-xlpe_HV = { type = "dirichlet", phi = 340E3 }
-xlpe_gnd = { type = "dirichlet", phi = 0.0 }
+interf_cond_in = { type = "dirichlet", phi = 340E3 }
+interf_semicon_out = { type = "dirichlet", phi = 0.0 }
 axis = { type = "symmetry"}
