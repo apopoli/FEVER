@@ -246,6 +246,14 @@ function main()
     @info "Case regions:  $(collect(keys(grid.cellsets)))"
     @info "Facetsets: $(collect(keys(grid.facetsets)))"
 
+    for (name, set) in grid.cellsets
+        @info "cellset=$name ncells=$(length(set))"
+    end
+
+    for (name, set) in grid.facetsets
+        @info "facetset=$name nfacets=$(length(set))"
+    end
+
     # -----------------------------
     # Materias, see https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=9863530
     # -----------------------------
@@ -295,7 +303,7 @@ function main()
 
     ThermalBC.apply_thermal_bcs!(assemble_robin_outer!, assembler, case, grid, dh, fv)
     @info "thermal bc keys in case: " keys(case.raw["physics"]["thermal"]["bc"])
-    @info "outer facets = " length(getfacetset(grid, "outer"))
+    # @info "outer facets = " length(getfacetset(grid, "outer"))
 
     # -----------------------------
     # Constraints
