@@ -13,6 +13,8 @@ Translate {-0.41121107898583415, +1.322018717455649960, 0} {
   Curve{:}; Surface{:}; 
 }
 
+Coherence;
+
 // Transfinite Curve {35,43} = 5 Using Progression 1;
 // Transfinite Curve {14} = 250 Using Progression 1;
 
@@ -23,15 +25,14 @@ Physical Surface("Insul_in_R", 56) = {7};
 Physical Surface("Semicon_in", 57) = {4};
 Physical Surface("Semicon_out", 58) = {6};
 Physical Surface("Insul_out", 59) = {5};
-// 
-Physical Curve("interf_cond_in", 60) = {5, 2, 7, 19, 18, 23, 22, 4, 16};
-Physical Curve("interf_semicon_out", 61) = {9, 24, 33, 32, 31, 30, 42};
-Physical Curve("axis", 62) = {14};
-Physical Curve("interf_joint_out", 63) = {10, 35, 34, 45, 44, 43, 47};
-//
+
+Physical Curve("axis", 60) = {12};
+Physical Curve("HV", 61) = {5, 2, 6, 16, 15, 18, 17, 4, 14};
+Physical Curve("gnd", 62) = {8, 19, 24, 23, 22, 21};
+Physical Curve("out", 63) = {9, 26, 25, 30, 29, 28, 32};
 
 Mesh.MeshSizeMax = 3/1000;
 Mesh 2;
 Mesh.MshFileVersion = 2;
-Save "joint_LIMES_scaled.msh";//+
+Save "joint_LIMES_scaled.msh";
 

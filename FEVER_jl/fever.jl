@@ -301,16 +301,10 @@ function main()
         @info "region=$region k=$(mat.k(293.15)) sigma=$(try mat.sigma(293.15,0.0) catch e e end)"
     end
 
-    ThermalBC.apply_thermal_bcs!(assemble_robin_outer!, assembler, case, grid, dh, fv)
-    @info "thermal bc keys in case: " keys(case.raw["physics"]["thermal"]["bc"])
-    # @info "outer facets = " length(getfacetset(grid, "outer"))
-
-    # -----------------------------
-    # Constraints
-    # axis/top/bottom adiabatic -> no forcing
-    # -----------------------------
     ch = ConstraintHandler(dh)
+    ThermalBC.apply_thermal_bcs!(assemble_robin_outer!, assembler, case, grid, dh, fv, ch)
     close!(ch)
+    update!(ch, 0.0)
 
     apply!(K, f, ch)
     T = K \ f
@@ -328,8 +322,6 @@ function main()
 
     @info "Wrote $outfile.vtu"
     # outer = getfacetset(grid, "outer") # utile per fare plot lungo una lines
-
-    # ---
 
     # -----------------------------
     # ELECTROSTATICS / CONDUCTION

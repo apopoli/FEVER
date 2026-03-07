@@ -17,16 +17,20 @@ function h_buried_iec60287(; burial_depth::Float64, rho_thermal_soil::Float64)
     end
 end
 
-
 """
-Legge case.raw["physics"]["thermal"]["bc"] e assembla le BC termiche.
+Legge case.raw["physics"]["thermal"]["bc"] e applica le BC termiche.
 Supporta:
-- type="convection"  (Robin con h costante)
-- type="robin"       (alias di convection)
-- type="buried_iec60287" (Robin con h(x))
+- type="convection"         (Robin con h costante)
+- type="robin"              (alias di convection)
+- type="buried_iec60287"    (Robin con h(x))
+- type="dirichlet"          (vincolo essenziale su T)
 - type="symmetry"/"adiabatic" (naturale: non fa nulla)
+
+Formato atteso del TOML:
+[physics.thermal.bc]
+facetset_name = { type = "...", ... }
 """
-function apply_thermal_bcs!(assemble_robin_outer!, assembler, case, grid, dh, fv)
+function apply_thermal_bcs!(assemble_robin_outer!, assembler, case, grid, dh, fv, ch)
     raw = case.raw
     haskey(raw, "physics") || return nothing
     haskey(raw["physics"], "thermal") || return nothing
@@ -36,15 +40,21 @@ function apply_thermal_bcs!(assemble_robin_outer!, assembler, case, grid, dh, fv
 
     for (fsname, spec_any) in bcs
         spec = spec_any::Dict{String,Any}
-        bctype = spec["type"]
+        bctype = String(spec["type"])
+
+        haskey(grid.facetsets, fsname) || error(
+            "Facetset '$fsname' not found in mesh. Available: $(collect(keys(grid.facetsets)))"
+        )
+
+        facetset = getfacetset(grid, fsname)
 
         if bctype == "convection" || bctype == "robin"
             h = tofloat(spec["h"])
             Tinf = tofloat(spec["Tinf"])
             hfun = x -> h
-            haskey(grid.facetsets, fsname) || error("Facetset '$fsname' not found in mesh. Available: $(collect(keys(grid.facetsets)))")
+
             assemble_robin_outer!(assembler, dh, fv;
-                facetset = getfacetset(grid, fsname),
+                facetset = facetset,
                 hfun = hfun,
                 T∞ = Tinf
             )
@@ -53,20 +63,24 @@ function apply_thermal_bcs!(assemble_robin_outer!, assembler, case, grid, dh, fv
             Tinf = tofloat(spec["Tinf"])
             d    = tofloat(spec["burial_depth"])
             rho  = tofloat(spec["rho_thermal_soil"])
-            rmin = tofloat(get(spec, "rmin", 0.0))
 
-            haskey(grid.facetsets, fsname) || error("Facetset '$fsname' not found in mesh. Available: $(collect(keys(grid.facetsets)))")
-            hfun = h_buried_iec60287(; burial_depth=d, rho_thermal_soil=rho)
-            
+            hfun = h_buried_iec60287(; burial_depth = d, rho_thermal_soil = rho)
+
             assemble_robin_outer!(assembler, dh, fv;
-                facetset = getfacetset(grid, fsname),
+                facetset = facetset,
                 hfun = hfun,
                 T∞ = Tinf
             )
 
+        elseif bctype == "dirichlet"
+            haskey(spec, "T") || error("Thermal Dirichlet on '$fsname' requires parameter 'T'")
+            Tval = tofloat(spec["T"])
+
+            add!(ch, Dirichlet(:T, facetset, (x, t) -> Tval))
+
         elseif bctype == "symmetry" || bctype == "adiabatic"
-            # naturale: nessuna azione
             nothing
+
         else
             error("Unknown thermal BC type '$bctype' on facetset '$fsname'")
         end
