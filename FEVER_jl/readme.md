@@ -5,6 +5,6 @@
 ### generate mesh
 gmsh -2 cable2d_axi.geo -format msh2 -o cable2d_axi.msh
 
-### example for adding a new package
+### example for adding a new package to the project
 julia --project=. -e 'using Pkg; Pkg.add("CSV")'
 
