@@ -28,7 +28,7 @@ Physical Surface("Insul_out", 59) = {5};
 
 Physical Curve("axis", 60) = {12};
 Physical Curve("HV", 61) = {1, 5, 2, 6, 16, 15, 18, 17, 4, 14};
-Physical Curve("gnd", 62) = {8, 19, 24, 23, 22, 21};
+Physical Curve("gnd", 62) = {8, 19, 24, 23, 22, 21, 9, 32, 27};
 Physical Curve("out", 63) = {9, 26, 25, 30, 29, 28, 32};
 
 Mesh.MeshSizeMax = 1.5/1000;
