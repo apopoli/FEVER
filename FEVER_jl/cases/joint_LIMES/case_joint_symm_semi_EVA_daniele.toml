@@ -5,10 +5,10 @@ file = "joint_LIMES_scaled_symm.msh"
 # region (cellset name in gmsh) = material key or alias
 Cond_in = "copper"
 Cond_out = "aluminum"
-Insul_in = "xlpe_LIMES"
+Insul_in = "LDPE"
 Semicon_in = "semicon"
 Semicon_out = "semicon"
-Insul_out = "LSR"
+Insul_out = "EVA"
 
 [physics.thermal]
 type = "steady"

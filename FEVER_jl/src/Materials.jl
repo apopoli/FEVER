@@ -50,6 +50,21 @@ function material_db()
             end,
             eps_r = T -> 2.3,
         ),
+        "xlpe_LIMES" => Material(
+            name="XLPE_LIMES",
+            aliases=["XLPE_LIMES"],
+            k = T -> 0.29,
+            # E is assumed in V/m
+            sigma = (T, E) -> begin
+                σ0 = 1e-17
+                T0 = 273.15
+                α  = 0.074
+                βmmkV = 0.10
+                E_kV_per_mm = E * 1e-6          # V/m -> kV/mm
+                σ0 * exp(α*(T - T0) + βmmkV*E_kV_per_mm)
+            end,
+            eps_r = T -> 2.3,
+        ),
         "LSR" => Material(
             name="LSR",
             aliases=["lsr", "LSR"],
@@ -59,7 +74,7 @@ function material_db()
                 σ0 = 7.6872e-16
                 T0 = 273.15
                 α  = 0.0411
-                βmmkV = 0.0443
+                βmmkV = 0.094
                 E_kV_per_mm = E * 1e-6          # V/m -> kV/mm
                 σ0 * exp(α*(T - T0) + βmmkV*E_kV_per_mm)
             end,
