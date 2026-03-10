@@ -1,5 +1,5 @@
 [mesh]
-file = "joint_LIMES/joint_LIMES_scaled_symm.msh"
+file = "joint_LIMES_scaled_symm.msh"
 
 [materials]
 # region (cellset name in gmsh) = material key or alias
