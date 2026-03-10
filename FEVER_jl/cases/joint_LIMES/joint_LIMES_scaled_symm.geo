@@ -30,17 +30,16 @@ Physical Surface("Cond_in", 53) = {3};
 Physical Surface("Cond_out", 54) = {1};
 Physical Surface("Insul_in", 55) = {7};
 Physical Surface("Semicon_in", 56) = {4};
-Physical Surface("Semicon_out", 57) = {5};
-Physical Surface("Insul_out", 58) = {5};
-Physical Surface("Semicon_out", 57) += {6};
+Physical Surface("Insul_out", 57) = {5};
+Physical Surface("Semicon_out", 64) = {6};
 
 Physical Curve("axis", 59) = {39};
 Physical Curve("out_T", 60) = {31, 30, 29, 28};
 Physical Curve("gnd", 61) = {27, 28, 21, 22, 43};
 Physical Curve("HV", 62) = {14, 4, 17, 18, 42};
+Physical Curve("gnd_semi", 63) = {31, 30, 29};
 
 Mesh.MeshSizeMax = 1.5/1000;
 Mesh 2;
 Mesh.MshFileVersion = 2;
 Save "joint_LIMES_scaled_symm.msh";
-

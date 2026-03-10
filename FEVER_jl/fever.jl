@@ -247,11 +247,11 @@ function main()
     @info "Facetsets: $(collect(keys(grid.facetsets)))"
 
     for (name, set) in grid.cellsets
-        @info "cellset=$name ncells=$(length(set))"
+        # @info "cellset=$name ncells=$(length(set))"
     end
 
     for (name, set) in grid.facetsets
-        @info "facetset=$name nfacets=$(length(set))"
+        # @info "facetset=$name nfacets=$(length(set))"
     end
 
     # -----------------------------

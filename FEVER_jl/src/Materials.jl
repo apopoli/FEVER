@@ -48,12 +48,12 @@ function material_db()
                 E_kV_per_mm = E * 1e-6          # V/m -> kV/mm
                 σ0 * exp(α*(T - T0) + βmmkV*E_kV_per_mm)
             end,
-            eps_r = T -> 2.3,         # placeholder
+            eps_r = T -> 2.3,
         ),
         "LSR" => Material(
             name="LSR",
             aliases=["lsr", "LSR"],
-            k = T -> 0.29,
+            k = T -> 0.25,
             # E is assumed in V/m
             sigma = (T, E) -> begin
                 σ0 = 7.6872e-16
@@ -63,7 +63,7 @@ function material_db()
                 E_kV_per_mm = E * 1e-6          # V/m -> kV/mm
                 σ0 * exp(α*(T - T0) + βmmkV*E_kV_per_mm)
             end,
-            eps_r = T -> 2.3,         # placeholder
+            eps_r = T -> 4.1,
         ),
         "LDPE" => Material(
             name="LDPE",
@@ -78,12 +78,12 @@ function material_db()
                 E_kV_per_mm = E * 1e-6          # V/m -> kV/mm
                 σ0 * exp(α*(T - T0) + βmmkV*E_kV_per_mm)
             end,
-            eps_r = T -> 2.3,         # placeholder
+            eps_r = T -> 2.2,
         ),
         "EVA" => Material(
             name="EVA",
             aliases=["eva", "EVA"],
-            k = T -> 0.29,
+            k = T -> 0.38,
             # E is assumed in V/m
             sigma = (T, E) -> begin
                 σ0 = 2.5714e-17
@@ -93,21 +93,28 @@ function material_db()
                 E_kV_per_mm = E * 1e-6          # V/m -> kV/mm
                 σ0 * exp(α*(T - T0) + βmmkV*E_kV_per_mm)
             end,
-            eps_r = T -> 2.3,         # placeholder
+            eps_r = T -> 2.2,         
         ),
         "semicon" => Material(
             name="Semiconductive layer",
             aliases=["sc_in","sc_out","semicon","sc"],
+            k = T -> 0.34,
+            sigma = (T, E) -> 6E3,    
+            eps_r = T -> 2.3,        
+        ),
+        "semicon_AP" => Material(
+            name="Semiconductive layer",
+            aliases=["semicon_AP"],
             k = T -> 0.29,
-            sigma = (T, E) -> 6E3,  # placeholder
-            eps_r = T -> 10.0,        # placeholder
+            sigma = (T, E) -> 6E-6,  
+            eps_r = T -> 2.3,
         ),
         "cover" => Material(
             name="Cover/Jacket",
             aliases=["cover", "jacket"],
             k = T -> 0.29,
-            sigma = (T, E) -> 1e-15,  # placeholder
-            eps_r = T -> 2.5,         # placeholder
+            sigma = (T, E) -> 1e-15,  
+            eps_r = T -> 2.5,         
         ),
     )
 end
