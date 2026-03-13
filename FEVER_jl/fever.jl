@@ -312,10 +312,14 @@ function main()
 
     @info "Solved. Tmin=$(minimum(T)) K, Tmax=$(maximum(T)) K"
 
+    casedir = dirname(casefile)
+    casename = splitext(basename(casefile))[1]
+    outfile = joinpath(casedir, casename)
+
     # -----------------------------
     # Export VTK - thermal
     # -----------------------------
-    outfile = mshfile[1:end-4]
+    # outfile = mshfile[1:end-4]
     VTKGridFile(outfile, dh) do vtk
         write_solution(vtk, dh, T)
     end
@@ -340,13 +344,13 @@ function main()
     end
 
     # --- Export once (choose suffix based on mode) ---
-    suffix = (etype == "electrostatic") ? "_phi" : "_phi_cond"
-    outfile_phi = outfile * suffix
+    suffix = (etype == "electrostatic") ? "_E" : "_E_cond"
+    outfile_E = outfile * suffix
 
-    VTKGridFile(outfile_phi, dhφ) do vtk
+    VTKGridFile(outfile_E, dhφ) do vtk
         write_solution(vtk, dhφ, phi)
     end
-    @info "Wrote $outfile_phi.vtu"
+    @info "Wrote $outfile_E.vtu"
 end
 
 main()

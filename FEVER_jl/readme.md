@@ -10,3 +10,6 @@ julia --project=. -e 'using Pkg; Pkg.add("CSV")'
 
 ### run outside repl 
 julia --project=. fever.jl cases/joint_LIMES/case_joint.toml
+
+### initialization on new machine
+julia --project=. -e 'using Pkg; Pkg.resolve(); Pkg.instantiate(); Pkg.precompile()'
